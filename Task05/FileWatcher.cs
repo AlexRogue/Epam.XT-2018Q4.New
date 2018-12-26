@@ -49,115 +49,177 @@ namespace WindowsFormsApp1
 
         private void OnCreated(object sender, FileSystemEventArgs e)
         {
-            fireCount++;
-            string currentTime = DateTime.Now.ToString("yyyy/MM/dd HH-mm-ss");
-            string textlog = $"{Environment.NewLine}{currentTime}{Environment.NewLine}{e.FullPath}{Environment.NewLine}{e.ChangeType}";
-            BeginInvoke(new Action(() => {
-                richTextBox1.AppendText(textlog);
-                logCreator.WriteLog(textlog, logDir, backupDir);
-                BackupFile(e.FullPath, $"{backupDir}{currentTime}\\", e.Name);
-            }
-          ));  
-        }
-
-        private void OnChanged(object sender, FileSystemEventArgs e)
-        {
-            string currentTime = DateTime.Now.ToString("yyyy/MM/dd HH-mm-ss");
-            string textlog = $"{Environment.NewLine}{currentTime}{Environment.NewLine}{e.FullPath}{Environment.NewLine}{e.ChangeType}";
-            fireCount++;
-            if (fireCount == 1)
+            object obj = new object();
+            lock (obj)
             {
-                BeginInvoke(new Action(() => {
+                fireCount++;
+                string currentTime = DateTime.Now.ToString("yyyy/MM/dd HH-mm-ss");
+                string textlog = $"{Environment.NewLine}{currentTime}{Environment.NewLine}{e.FullPath}{Environment.NewLine}{e.ChangeType}";
+                BeginInvoke(new Action(() =>
+                {
                     richTextBox1.AppendText(textlog);
                     logCreator.WriteLog(textlog, logDir, backupDir);
                     BackupFile(e.FullPath, $"{backupDir}{currentTime}\\", e.Name);
                 }
-            ));
+              ));
             }
-            else
+        }
+
+        private void OnChanged(object sender, FileSystemEventArgs e)
+        {
+            object obj = new object();
+            lock (obj)
             {
-                fireCount = 0;
+                string currentTime = DateTime.Now.ToString("yyyy/MM/dd HH-mm-ss");
+                string textlog = $"{Environment.NewLine}{currentTime}{Environment.NewLine}{e.FullPath}{Environment.NewLine}{e.ChangeType}";
+                fireCount++;
+                if (fireCount == 1)
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        richTextBox1.AppendText(textlog);
+                        logCreator.WriteLog(textlog, logDir, backupDir);
+                        BackupFile(e.FullPath, $"{backupDir}{currentTime}\\", e.Name);
+                    }
+                ));
+                }
+                else
+                {
+                    fireCount = 0;
+                }
             }
         }
 
         private void OnDeleted(object sender, FileSystemEventArgs e)
         {
-            string currentTime = DateTime.Now.ToString("yyyy/MM/dd HH-mm-ss");
-            string textlog = $"{Environment.NewLine}{currentTime}{Environment.NewLine}{e.FullPath}{Environment.NewLine}{e.ChangeType}";
-            fireCount++;
-            BeginInvoke(new Action(() =>
-            richTextBox1.AppendText(textlog + "\n")
-            ));
-            logCreator.WriteLog(textlog, logDir, backupDir);
+            object obj = new object();
+            lock (obj)
+            {
+                string currentTime = DateTime.Now.ToString("yyyy/MM/dd HH-mm-ss");
+                string textlog = $"{Environment.NewLine}{currentTime}{Environment.NewLine}{e.FullPath}{Environment.NewLine}{e.ChangeType}";
+                fireCount++;
+                BeginInvoke(new Action(() =>
+                richTextBox1.AppendText(textlog + "\n")
+                ));
+                logCreator.WriteLog(textlog, logDir, backupDir);
+            }
         }
 
-        private void OnRenamed(object sender, FileSystemEventArgs e)
+        private void OnRenamed(object sender, RenamedEventArgs e)
         {
-            string currentTime = DateTime.Now.ToString("yyyy/MM/dd HH-mm-ss");
-            string textlog = $"{Environment.NewLine}{currentTime}{Environment.NewLine}{e.FullPath}{Environment.NewLine}Renamed";
-            BeginInvoke(new Action(() =>
+            object obj = new object();
+            lock (obj)
             {
-                richTextBox1.AppendText(textlog);
-                logCreator.WriteLog(textlog, logDir, backupDir);
-                BackupFile(e.FullPath, $"{backupDir}{currentTime}\\", e.Name);
-            }));  
+                string currentTime = DateTime.Now.ToString("yyyy/MM/dd HH-mm-ss");
+                string textlog = $"{Environment.NewLine}{currentTime}{Environment.NewLine}{e.FullPath}{Environment.NewLine}{e.ChangeType}{Environment.NewLine}{e.OldFullPath}";
+                BeginInvoke(new Action(() =>
+                {
+                    richTextBox1.AppendText(textlog);
+                    logCreator.WriteLog(textlog, logDir, backupDir);
+                    BackupFile(e.FullPath, $"{backupDir}{currentTime}\\", e.Name);
+                }));
+            }
         }
 
         private void BackupFile (string sourcefn, string destinfn, string backupingfile)
         {
             object obj = new object();
-            var fileName = backupingfile.Substring(backupingfile.LastIndexOf('\\') + 1);
-            var additionOfFileName = backupingfile.Replace(fileName, string.Empty);
-            string pathtofile = $"{destinfn}{additionOfFileName}";
-            if (!Directory.Exists(pathtofile))
-            {
-                Directory.CreateDirectory(pathtofile);
-            }
             lock (obj)
             {
+                var fileName = backupingfile.Substring(backupingfile.LastIndexOf('\\') + 1);
+                var additionOfFileName = backupingfile.Replace(fileName, string.Empty);
+                string pathtofile = $"{destinfn}{additionOfFileName}";
+                if (!Directory.Exists(pathtofile))
+                {
+                    Directory.CreateDirectory(pathtofile);
+                }
                 File.Copy(sourcefn, $"{pathtofile + fileName}", true);
+                richTextBox1.AppendText($"\n{pathtofile}{fileName}");
+                logCreator.WriteLog($"{pathtofile}{fileName}\n", logDir, backupDir);
+                richTextBox1.AppendText($"\n");
             }
-            richTextBox1.AppendText($"\n{pathtofile}{fileName}");
-            logCreator.WriteLog($"{pathtofile}{fileName}\n", logDir, backupDir);
-            richTextBox1.AppendText($"\n");
         }
 
         private void RecoverFiles()
         {
-            DirectoryInfo directory = new DirectoryInfo(fileSystemWatcher.Path);
-            foreach (var file in directory.GetFiles())
+            object obj = new object();
+            lock (obj)
             {
-                file.Delete();
-            }
-            foreach (DirectoryInfo subDirectory in directory.GetDirectories())
-            {
-                subDirectory.Delete(true);
-            }
-            List<string> listlog = new List<string>();
-            StringBuilder strLog = new StringBuilder();
-            DateTime remainnigdatetime = DateTime.Now;
-            using (StreamReader readlog = new StreamReader(logDir))
-            {
-                while (!readlog.EndOfStream)
+                DirectoryInfo directory = new DirectoryInfo(fileSystemWatcher.Path);
+                foreach (var file in directory.GetFiles())
                 {
-                    if (readlog.ReadLine() != "")
+                    file.Delete();
+                }
+                foreach (DirectoryInfo subDirectory in directory.GetDirectories())
+                {
+                    subDirectory.Delete(true);
+                }
+
+                List<ObjectInfo> objectInfos = new List<ObjectInfo>();
+                List<string> listlog = new List<string>();
+                StringBuilder strLog = new StringBuilder();
+                DateTime remainnigdatetime = DateTime.Now;
+                using (StreamReader readlog = new StreamReader(logDir))
+                {
+                    while (!readlog.EndOfStream)
                     {
-                        listlog.Add(readlog.ReadLine());
+                        var logLine = readlog.ReadLine();
+
+                        if (logLine != "")
+                        {
+                            listlog.Add(logLine);
+                        }
                     }
-                    //strLog.Append(readlog.ReadLine());
+                }
+
+
+                for (int skip = 0; skip < listlog.Count; skip += 5)
+                {
+                    var logData = listlog.Skip(skip).Take(5).ToList();
+                    if (logData.Any(x => x.Equals("Deleted")))
+                    {
+                        var deletedElement = logData.Take(3).ToList();
+                        objectInfos.Add(new ObjectInfo(deletedElement[0], deletedElement[1], deletedElement[2]));
+                        skip -= 2;
+                    }
+                    if (logData.Any(x => x.Equals("Renamed")))
+                    {
+                        objectInfos.Add(new ObjectInfo(logData[0], logData[1], logData[2], logData[4], logData[3]));
+                    }
+                    if(logData.Any(x => x.Equals("Changed") || x.Equals("Created")))
+                    {
+                        var changedElement = logData.Take(4).ToList();
+                        objectInfos.Add(new ObjectInfo(changedElement[0], changedElement[1], changedElement[2], changedElement[3]));
+                        skip--;
+                    }
+                }
+
+
+                for (int i = 0; i < objectInfos.Count; i++)
+                {
+                    SwitchAction(objectInfos[i]);
                 }
             }
-            //var t = strLog.ToString().Split(new string[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
-            
-
-            for (DateTime d = DateTime.Parse(listlog[0]); d < recoveryTime ; d = d.AddSeconds(1))  //until <= control datetime
-            {
-                //if (listlog[i].StartsWith("2"))
-                //{
-                //    remainnigdatetime = DateTime.ParseExact(listlog[i], "yyyy-MM-dd-HH-mm-ss", System.Globalization.CultureInfo.InvariantCulture);
-                //}
-            }
         }
+
+
+        private void SwitchAction(ObjectInfo objectInfo)
+        {
+            Dictionary<string, Action> d = new Dictionary<string, Action>();
+            d.Add("Created", () => {
+                var filePath = objectInfo.PathBeforeChange.Substring(0, objectInfo.PathBeforeChange.LastIndexOf("\\"));
+                if (!Directory.Exists(filePath))
+                {
+                    Directory.CreateDirectory(filePath);
+                }
+                File.Copy(objectInfo.BackUpPath, objectInfo.PathBeforeChange, true); });
+            d.Add("Changed", () => { File.Copy(objectInfo.BackUpPath, objectInfo.PathBeforeChange, true); });
+            d.Add("Deleted", () => { File.Delete(objectInfo.PathBeforeChange); });
+            d.Add("Renamed", () => { File.Copy(objectInfo.BackUpPath, objectInfo.PathBeforeChange); });
+            d[objectInfo.Action].Invoke();
+        }
+
+
 
 
         private void startToWatch_Click(object sender, EventArgs e)

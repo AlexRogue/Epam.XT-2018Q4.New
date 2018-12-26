@@ -52,6 +52,7 @@
       <DependentUpon>FileWatcher.cs</DependentUpon>
     </Compile>
     <Compile Include="LogCreator.cs" />
+    <Compile Include="ObjectInfo.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Recoverer.cs" />
