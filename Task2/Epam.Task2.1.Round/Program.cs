@@ -13,7 +13,7 @@ namespace Epam.Task2._1.Round
             Round round = new Round();
             do
             {
-                Console.WriteLine("Введите:");
+                Console.WriteLine("Enter:");
                 Console.WriteLine($"{"       "}1: Show circumference of round");
                 Console.WriteLine($"{"       "}2: Show area of round");
                 Console.WriteLine($"{"       "}3: Show center coordinates of round");
